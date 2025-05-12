@@ -1,6 +1,7 @@
 import os
 from src.preprocess import clean_text
 from src.tokenizer import get_tokens
+from src.loader import get_loaders
 
 folder_path = "data/HarryPotter"
 def main():
@@ -14,6 +15,12 @@ def main():
   # 2. 토큰화
   tokens = get_tokens(os.path.join(folder_path, "clean"))
   print("2. 토근화 완료")
+
+
+  # 3. loader
+  train_loader = get_loaders(tokens)
+
+  print(train_loader)
 
 
 
