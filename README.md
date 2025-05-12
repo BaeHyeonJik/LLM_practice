@@ -15,3 +15,6 @@ venv\Scripts\activate
 
 # 의존성 설치
 pip install -r requirements.txt
+
+# GPU 가능 버전 torch 설치는 따로
+pip install torch==2.2.2+cu118 --index-url https://download.pytorch.org/whl/cu118
