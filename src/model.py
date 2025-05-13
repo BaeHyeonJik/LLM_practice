@@ -10,6 +10,7 @@ DROP_RATE = 0.1  # 드롭아웃 비율 (과적합 방지)
 QKV_BIAS = False  # Query/Key/Value 선형 변환 시 bias 사용 여부
 
 
+# MultiHeadAttention class 정의
 class SelfAttention(nn.Module):
   def __init__(self, embed_dim, atten_dim):
     super().__init__()
@@ -44,7 +45,7 @@ class SelfAttention(nn.Module):
     mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
     attn_scores.masked_fill_(mask_bool, -torch.inf)
 
-    # 스케일 조정 후 softmax로 어텐션 가중치 계산, 이후 드롭아웃 적용
+    # 스케일 조정 후 softmax로 어텐션 가중치 계산(atten_dim 기준), 이후 드롭아웃 적용
     attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
     attn_weights = self.dropout(attn_weights)
 
@@ -72,7 +73,7 @@ class MultiHeadAttention(nn.Module):
   def forward(self, x):
     head_outputs = []
 
-    # 헤드 병합
+    # 헤드 병합(마지막 차원(atten_dim 기준))
     for attention in self.attentions:
       head_output = attention(x)
       head_outputs.append(head_output)
@@ -82,5 +83,31 @@ class MultiHeadAttention(nn.Module):
     output = self.fc(concatenated_heads)
 
     return output
+  
+
+# LayerNorm class 정의
+class LayerNorm(nn.Module):
+  def __init__(self, emb_dim):
+    super().__init__()
+    self.eps = 1e-5
+
+    # γ는 처음에는 곱해도 그대로 나와야 하기에 1
+    # β는 처음에는 더해도 그대로 나와야 하기에 0
+    self.scale = nn.Parameter(torch.ones(emb_dim))
+    self.shfit = nn.Parameter(torch.zeros(emb_dim))
+
+  # norm_x = (x - μ) / sqrt(σ² + ε)
+  # 최종 출력 = γ * norm_x + β
+  def forward(self, x):
+
+    # keepdim=True => shape: (batch, seq_len, 1) => broadcasting이 가능하게 유지
+    mean = x.mean(dim=-1, keepdim=True)  
+    # unbiased=False => 전체데이터의 특성을 그대로 반영 => n-1 이 아니라 n 으로 나눠줌
+    var = x.var(dim=-1, keepdim=True, unbiased=False)
+    norm_x = (x - mean) / torch.sqrt(var + self.eps)
+    return self.scale * norm_x + self.shfit
+
+
+
 
 
