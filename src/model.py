@@ -1,18 +1,9 @@
 import torch
 import torch.nn as nn
 
-# VOCAB_SIZE = tokenizer.n_vocab  # 50257, Tiktoken을 사용할 때 어휘 수
-# VOCAB_SIZE = len(tokenizer)     # AutoTokenizer를 사용할 때 어휘 수
-CONTEXT_LENGTH = 128  # 문맥 길이 (원래: 1024, 줄여서 사용)
-NUM_HEADS = 12  # 멀티헤드 어텐션의 헤드 수
-NUM_LAYERS = 12  # Transformer 블록의 층 수
-DROP_RATE = 0.1  # 드롭아웃 비율 (과적합 방지)
-QKV_BIAS = False  # Query/Key/Value 선형 변환 시 bias 사용 여부
-
-
 # MultiHeadAttention class 정의
 class SelfAttention(nn.Module):
-  def __init__(self, embed_dim, atten_dim):
+  def __init__(self, embed_dim, atten_dim, drop_rate, context_length):
     super().__init__()
 
     self.d_out = atten_dim
@@ -21,15 +12,16 @@ class SelfAttention(nn.Module):
     # W_query: 내가 어떤 정보를 찾고 싶은지를 표현 (질문 역할)
     # W_key  : 각 토큰이 어떤 정보인지 표현 (정보의 제목)
     # W_value: 실제로 전달할 정보 (실제 내용)
-    self.W_query = nn.Linear(embed_dim, atten_dim, bias=QKV_BIAS)
-    self.W_key = nn.Linear(embed_dim, atten_dim, bias=QKV_BIAS)
-    self.W_value = nn.Linear(embed_dim, atten_dim, bias=QKV_BIAS)
+    self.W_query = nn.Linear(embed_dim, atten_dim, bias=False)
+    self.W_key = nn.Linear(embed_dim, atten_dim, bias=False)
+    self.W_value = nn.Linear(embed_dim, atten_dim, bias=False)
 
     # 드롭아웃 정의
-    self.dropout = nn.Dropout(DROP_RATE)
+    self.dropout = nn.Dropout(drop_rate)
 
     # 마스크 등록 (상삼각 행렬을 사용 => 정답지 차단)
-    self.register_buffer('mask', torch.triu(torch.ones((CONTEXT_LENGTH, CONTEXT_LENGTH)), diagonal = 1))
+    mask = torch.triu(torch.ones((context_length, context_length)), diagonal=1)
+    self.register_buffer('mask', mask)
 
   def forward(self, x):
     # Query, Key, Value 생성
@@ -57,7 +49,7 @@ class SelfAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-  def __init__(self, embed_dim, num_heads):
+  def __init__(self, embed_dim, num_heads, drop_rate, context_length):
     super().__init__()
     assert embed_dim % num_heads == 0
 
@@ -65,7 +57,7 @@ class MultiHeadAttention(nn.Module):
     atten_dim = embed_dim // num_heads
 
     # 여러 개의 SelfAttention을 사용
-    self.attentions = nn.ModuleList([SelfAttention(embed_dim, atten_dim) for _ in range(num_heads)])
+    self.attentions = nn.ModuleList([SelfAttention(embed_dim, atten_dim, drop_rate, context_length) for _ in range(num_heads)])
 
     # 최종 출력 프로젝션
     self.fc = nn.Linear(embed_dim, embed_dim)
@@ -135,3 +127,61 @@ class FeedForward(nn.Module):
   def forward(self, x):
     output = self.layers(x)
     return output
+  
+
+# TransformerBlock class 정의
+class TransformerBlock(nn.Module):
+  def __init__(self, emb_dim, num_heads, drop_rate, context_length):
+    super().__init__()
+    self.att = MultiHeadAttention(emb_dim, num_heads, drop_rate, context_length)
+    self.ff = FeedForward(emb_dim)
+    self.norm1 = LayerNorm(emb_dim)
+    self.norm2 = LayerNorm(emb_dim)
+    self.drop_shortcut = nn.Dropout(drop_rate)
+
+  # Pre-Norm 구조
+  # x → LayerNorm -> Attention -> Dropout -> Residual
+  # -> LayerNorm -> FeedForword -> Dropout -> Residual
+  def forward(self, x):
+    short_cut = x
+    x = self.norm1(x)
+    x = self.att(x)
+    x = self.drop_shortcut(x)
+    x = x + short_cut
+
+    short_cut = x
+    x = self.norm2(x)
+    x = self.ff(x)
+    x = self.drop_shortcut(x)
+    output = x + short_cut
+
+    return output
+  
+
+# GPTModel class 정의
+class GPTModel(nn.Module):
+  def __init__(self, vocab_size, emb_dim, context_length, num_heads, drop_rate, num_layers):
+    super().__init__()
+
+    self.tok_emb = nn.Embedding(vocab_size, emb_dim)
+    self.pos_emb = nn.Embedding(context_length, emb_dim)
+    self.drop_emb = nn.Dropout(drop_rate)
+    self.trf_blocks = nn.Sequential(*[TransformerBlock(emb_dim, num_heads, drop_rate, context_length) for _ in range(num_layers)])
+
+    self.final_norm = LayerNorm(emb_dim)
+    self.out_head = nn.Linear(emb_dim, vocab_size, bias=False)
+
+  def forward(self, in_idx):
+    batch_size, seq_len = in_idx.shape
+
+    # GPT 모델 전체 구현
+    # TokenEmbedding + PositionalEmbedding -> Dropout -> TransformerBlock × L
+    # -> inal LayerNorm → Linear Projection (Out Head) → Logits 반환
+    tok_embeds = self.tok_emb(in_idx)
+    pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
+    x = tok_embeds + pos_embeds
+    x = self.drop_emb(x)
+    x = self.trf_blocks(x)
+    x = self.final_norm(x)
+    logits = self.out_head(x)
+    return logits
