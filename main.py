@@ -7,9 +7,9 @@ from src.train import model_train
 folder_path = "data/HarryPotter"
 
 # 디렉터리 생성
-best_model_dir = "models"
+models_dir = "models"
 checkpoints_dir = "checkpoints"
-os.makedirs(best_model_dir, exist_ok=True)
+os.makedirs(models_dir, exist_ok=True)
 os.makedirs(checkpoints_dir, exist_ok=True)
 
 def main():
@@ -26,7 +26,7 @@ def main():
   print("3. 데이터 로드 완료")
 
   # 4. 훈련
-  model_train(train_loader, val_loader, best_model_dir, checkpoints_dir)
+  model_train(train_loader, val_loader, models_dir, checkpoints_dir)
 
 
 if __name__ == "__main__":

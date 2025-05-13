@@ -6,7 +6,7 @@ from src.model import GPTModel
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
-def model_train(train_loader, val_loader, best_model_dir, checkpoints_dir):
+def model_train(train_loader, val_loader, models_dir, checkpoints_dir):
     # 하이퍼파라미터 정의
     vocab_size = tokenizer.n_vocab
     emb_dim = 768
@@ -18,6 +18,8 @@ def model_train(train_loader, val_loader, best_model_dir, checkpoints_dir):
     # 모델 정의
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = GPTModel(vocab_size, emb_dim, context_length, num_heads, drop_rate, num_layers).to(device)
+
+    # 가중치 업데이트 optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
 
     best_val_loss = float('inf')
@@ -30,10 +32,14 @@ def model_train(train_loader, val_loader, best_model_dir, checkpoints_dir):
 
         # 훈련 단계
         for input_batch, target_batch in tqdm(train_loader, desc=f"Epoch {epoch+1} Training", leave=False):
+            
+            # 이전 gradient를 초기화(정확한 학습을 위해)
             optimizer.zero_grad()
             input_batch, target_batch = input_batch.to(device), target_batch.to(device)
 
             logits = model(input_batch)
+
+            # [batch_size * seq_len, vocab_size] 랑 [batch_size * seq_len] 비교 => loss(scalar)
             loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
 
             epoch_train_loss += loss.item()
@@ -61,13 +67,11 @@ def model_train(train_loader, val_loader, best_model_dir, checkpoints_dir):
         # 모델 성능이 개선되었을 경우, 모델 저장
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            best_model_path = os.path.join(best_model_dir, "best_model.pth")
-            torch.save(model.state_dict(), best_model_path)
-            print(f"Model improved! Saved to {best_model_path}")
+            model_path = os.path.join(models_dir, "best_model.pth")
+            torch.save(model.state_dict(), model_path)
+            print(f"Model improved! Saved to {model_path}")
 
         # 매 에폭마다 체크포인트 저장
-        checkpoint_dir = os.path.join(checkpoints_dir, f"exp_{str(epoch+1).zfill(3)}")
-        os.makedirs(checkpoint_dir, exist_ok=True)
-        checkpoint_path = os.path.join(checkpoint_dir, f"model_epoch{epoch+1}.pth")
-        torch.save(model.state_dict(), checkpoint_path)
-        print(f"Checkpoint saved at {checkpoint_path}")
+        checkpoints_path = os.path.join(checkpoints_dir, f"model_epoch{epoch+1}.pth")
+        torch.save(model.state_dict(), checkpoints_path)
+        print(f"Checkpoint saved at {checkpoints_path}")
