@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 
 class MyDataset(Dataset):
   def __init__(self, token_ids, max_length, stride):
@@ -27,18 +27,17 @@ def get_loaders(token_ids: list[int]) -> DataLoader:
   # MyDataset 클래스에 token_ids를 전달하여 데이터셋을 만듦
   dataset = MyDataset(token_ids, max_length = 32, stride = 4)
 
-  # DataLoader 객체를 생성
+  total_size = len(dataset)
+  train_size = int(total_size * 0.9)
+  val_size = total_size - train_size
+  train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+  # DataLoader 객체를 생성(train_loader, val_loader)
   # dataset: 데이터를 배치 단위로 반환할 MyDataset 객체
   # batch_size: 배치 크기
   # shuffle: 데이터를 섞어서 반환
   # drop_last: 마지막 배치가 배치 크기보다 작으면 버림
-  train_loader = DataLoader(dataset, batch_size=128, shuffle=True, drop_last=True)
+  train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, drop_last=True)
+  val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
 
-  return train_loader
-
-
-
-
-
-
-
+  return train_loader, val_loader
