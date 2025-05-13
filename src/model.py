@@ -105,7 +105,22 @@ class LayerNorm(nn.Module):
     # unbiased=False => 전체데이터의 특성을 그대로 반영 => n-1 이 아니라 n 으로 나눠줌
     var = x.var(dim=-1, keepdim=True, unbiased=False)
     norm_x = (x - mean) / torch.sqrt(var + self.eps)
-    return self.scale * norm_x + self.shfit
+    output = self.scale * norm_x + self.shfit
+    return output
+  
+
+# GELU class 정의
+class GELU(nn.Module):
+  def __init__(self):
+    super().__init__()
+
+  # GELU(x) = 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
+  def forward(self, x):
+    output = 0.5 * x * (1 + torch.tanh(
+      torch.sqrt(torch.tensor(2.0/torch.pi)) *
+      x + 0.044715 * torch.pow(x, 3)))
+    return output
+
 
 
 
