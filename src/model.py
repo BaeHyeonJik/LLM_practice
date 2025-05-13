@@ -1,5 +1,16 @@
 import torch
 import torch.nn as nn
+import tiktoken
+
+tokenizer = tiktoken.get_encoding("gpt2")
+
+# 하이퍼파라미터 정의
+VOCAB_SIZE = tokenizer.n_vocab
+EMB_DIM = 768
+CONTEXT_LENGTH = 128
+NUM_HEADS = 12
+NUM_LAYERS = 12
+DROP_RATE = 0.1
 
 # MultiHeadAttention class 정의
 class SelfAttention(nn.Module):
@@ -86,7 +97,7 @@ class LayerNorm(nn.Module):
     # γ는 처음에는 곱해도 그대로 나와야 하기에 1
     # β는 처음에는 더해도 그대로 나와야 하기에 0
     self.scale = nn.Parameter(torch.ones(emb_dim))
-    self.shfit = nn.Parameter(torch.zeros(emb_dim))
+    self.shift = nn.Parameter(torch.zeros(emb_dim))
 
   # norm_x = (x - μ) / sqrt(σ² + ε)
   # 최종 출력 = γ * norm_x + β
@@ -97,7 +108,7 @@ class LayerNorm(nn.Module):
     # unbiased=False => 전체데이터의 특성을 그대로 반영 => n-1 이 아니라 n 으로 나눠줌
     var = x.var(dim=-1, keepdim=True, unbiased=False)
     norm_x = (x - mean) / torch.sqrt(var + self.eps)
-    output = self.scale * norm_x + self.shfit
+    output = self.scale * norm_x + self.shift
     return output
   
 
@@ -160,16 +171,19 @@ class TransformerBlock(nn.Module):
 
 # GPTModel class 정의
 class GPTModel(nn.Module):
-  def __init__(self, vocab_size, emb_dim, context_length, num_heads, drop_rate, num_layers):
+  def __init__(self):
     super().__init__()
 
-    self.tok_emb = nn.Embedding(vocab_size, emb_dim)
-    self.pos_emb = nn.Embedding(context_length, emb_dim)
-    self.drop_emb = nn.Dropout(drop_rate)
-    self.trf_blocks = nn.Sequential(*[TransformerBlock(emb_dim, num_heads, drop_rate, context_length) for _ in range(num_layers)])
+    self.tok_emb = nn.Embedding(VOCAB_SIZE, EMB_DIM)
+    self.pos_emb = nn.Embedding(CONTEXT_LENGTH, EMB_DIM)
+    self.drop_emb = nn.Dropout(DROP_RATE)
+    self.trf_blocks = nn.Sequential(*[
+        TransformerBlock(EMB_DIM, NUM_HEADS, DROP_RATE, CONTEXT_LENGTH) 
+        for _ in range(NUM_LAYERS)
+    ])
 
-    self.final_norm = LayerNorm(emb_dim)
-    self.out_head = nn.Linear(emb_dim, vocab_size, bias=False)
+    self.final_norm = LayerNorm(EMB_DIM)
+    self.out_head = nn.Linear(EMB_DIM, VOCAB_SIZE, bias=False)
 
   def forward(self, in_idx):
     batch_size, seq_len = in_idx.shape

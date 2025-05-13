@@ -4,20 +4,11 @@ import tiktoken
 from tqdm import tqdm
 from src.model import GPTModel
 
-tokenizer = tiktoken.get_encoding("gpt2")
-
 def model_train(train_loader, val_loader, models_dir, checkpoints_dir):
-    # 하이퍼파라미터 정의
-    vocab_size = tokenizer.n_vocab
-    emb_dim = 768
-    context_length = 128
-    num_heads = 12
-    num_layers = 12
-    drop_rate = 0.1
 
     # 모델 정의
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = GPTModel(vocab_size, emb_dim, context_length, num_heads, drop_rate, num_layers).to(device)
+    model = GPTModel().to(device)
 
     # 가중치 업데이트 optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
