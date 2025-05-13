@@ -6,6 +6,11 @@
 ## 📂 사용 데이터셋
 - [Harry Potter Books on Kaggle](https://www.kaggle.com/datasets/shubhammaindola/harry-potter-books?select=02+Harry+Potter+and+the+Chamber+of+Secrets.txt)
 
+## 🧠 모델 구조
+아래는 구현한 GPT 구조입니다.
+
+![GPT 구조도](https://www.mdpi.com/mathematics/mathematics-11-02320/article_deploy/html/images/mathematics-11-02320-g001.png)
+
 
 ## 🔧 실행 방법
 ```bash
