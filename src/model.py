@@ -120,9 +120,18 @@ class GELU(nn.Module):
       torch.sqrt(torch.tensor(2.0/torch.pi)) *
       x + 0.044715 * torch.pow(x, 3)))
     return output
+  
 
+# FeedForward class 정의
+class FeedForward(nn.Module):
+  def __init__(self, emb_dim):
+    super().__init__()
+    self.layers = nn.Sequential(
+      nn.Linear(emb_dim, 4 * emb_dim),
+      GELU(),
+      nn.Linear(4 * emb_dim, emb_dim)
+    )
 
-
-
-
-
+  def forward(self, x):
+    output = self.layers(x)
+    return output
