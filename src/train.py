@@ -1,3 +1,4 @@
+import os
 import torch
 import tokenizer
 import tiktoken
@@ -6,6 +7,12 @@ from tqdm import tqdm
 
 
 tokenizer = tiktoken.get_encoding("gpt2")
+
+# 디렉터리 생성
+best_model_dir = "models"
+checkpoints_dir = "checkpoints"
+os.makedirs(best_model_dir, exist_ok=True)
+os.makedirs(checkpoints_dir, exist_ok=True)
 
 def model_train(train_loader, val_loader):
 
@@ -46,9 +53,6 @@ def model_train(train_loader, val_loader):
       tokens_seen += input_batch.numel()
       global_step += 1
 
-      if global_step % 1000 == 0:
-        print(f"Tokens seen: {tokens_seen}")
-
     avg_train_loss = epoch_train_loss / len(train_loader)
     train_losses.append(avg_train_loss)
 
@@ -69,11 +73,11 @@ def model_train(train_loader, val_loader):
 
     if avg_val_loss < best_val_loss:
       best_val_loss = avg_val_loss
-      torch.save(model.state_dict(), f"best_model_{str(epoch+1).zfill(3)}.pth")
+      torch.save(model.state_dict(), os.path.join(best_model_dir, "best_model.pth"))
       print("model updated!")
 
     
-    torch.save(model.state_dict(), f"model_{str(epoch+1).zfill(3)}.pth")
+    torch.save(model.state_dict(), os.path.join(checkpoints_dir, f"model_{str(epoch+1).zfill(3)}.pth"))
 
 
 
