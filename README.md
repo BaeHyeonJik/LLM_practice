@@ -14,6 +14,11 @@
 
 ## 🔧 실행 방법
 ```bash
+
+# 폴더 생성
+`root/data/HarryPotter/raw/` 폴더를 생성하고, 원본 데이터를 이곳에 삽입하세요.
+
+
 # 가상환경 활성화
 python -m venv venv
 venv\Scripts\activate
@@ -22,4 +27,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # GPU 가능 버전 torch 설치는 따로
-pip install torch==2.2.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+pip install torch==2.7.0+cu118 torchvision==0.18.0+cu118 torchaudio==2.7.0+cu118 --extra-index-url https://download.pytorch.org/whl/cu118
+
+
