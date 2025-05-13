@@ -1,4 +1,4 @@
 tiktoken
 numpy
-tokenizers
 tqdm
+torch
