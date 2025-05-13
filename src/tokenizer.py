@@ -17,8 +17,8 @@ def get_tokens(folder_path: str) -> list[int]:
         all_book_text += file.read()
 
   # token화
-  tokens = tokenizer.encode(all_book_text)
+  tokens_ids = tokenizer.encode(all_book_text)
 
-  return tokens
+  return tokens_ids
   
 
